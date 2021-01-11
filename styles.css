@@ -1,0 +1,166 @@
+html, body, div, span, applet, object, iframe,
+h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+a, abbr, acronym, address, big, cite, code,
+del, dfn, em, img, ins, kbd, q, s, samp,
+small, strike, strong, sub, sup, tt, var,
+b, u, i, center,
+dl, dt, dd, ol, ul, li,
+fieldset, form, label, legend,
+table, caption, tbody, tfoot, thead, tr, th, td,
+article, aside, canvas, details, embed,
+figure, figcaption, footer, header, hgroup,
+menu, nav, output, ruby, section, summary,
+time, mark, audio, video {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    font-size: 100%;
+    font: inherit;
+    vertical-align: baseline;
+    font-family: Arial, sans, sans-serif;
+}
+/* HTML5 display-role reset for older browsers */
+article, aside, details, figcaption, figure,
+footer, header, hgroup, menu, nav, section {
+    display: block;
+}
+body {
+    line-height: 1;
+}
+ol, ul {
+    list-style: none;
+}
+blockquote, q {
+    quotes: none;
+}
+blockquote:before, blockquote:after,
+q:before, q:after {
+    content: '';
+    content: none;
+}
+table {
+    border-collapse: collapse;
+    border-spacing: 0;
+}
+
+.container {
+    width: 100vw;
+    height: 100vh;
+    background: #343434;
+    display: flex;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.content {
+    width: 100%;
+    margin: auto;
+}
+
+.button {
+    background: #000000;
+    cursor: pointer;
+    color: #3d7a00;
+    border: 1px solid #3d7a00;
+    border-radius: 8px;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+.button:hover {
+    filter: brightness(1.5);
+}
+
+.back {
+    width: 125px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.choose_field {
+    width: 100%;
+    margin: auto;
+}
+
+.field_text, .choose_game_model, .difficulty_text {
+    text-align: center;
+    font-size: 32px;
+    margin: 0 0 15px 0;
+}
+
+.game_mode_buttons, .field_size_buttons {
+    width: 25%;
+    height: 100px;
+    background: #343434;
+    display: flex;
+    justify-content: space-between;
+    align-content: center;
+    align-items: center;
+    margin: auto;
+}
+
+.pve_button, .pvp_button, .field_size_button, .random_generate_button, .start_game_button {
+    display: flex;
+    height: 40px;
+    justify-content: center;
+    align-items: center;
+    width: 45%;
+}
+
+.difficulty {
+    display: flex;
+    height: 40px;
+    justify-content: center;
+    align-items: center;
+    width: 20%;
+}
+
+.numbers {
+    display: flex;
+    justify-content: center;
+}
+
+.letter, .number {
+    height: 80px;
+    width: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+}
+
+.battle_field {
+    margin: auto;
+}
+
+.row {
+    display: flex;
+    justify-content: center;
+}
+
+.field {
+    height: 80px;
+    width: 80px;
+    outline: 1px solid #000;
+    cursor: pointer;
+    background: azure;
+}
+
+.random_generate_button {
+    margin: auto;
+}
+
+.options {
+    display: flex;
+    justify-content: center;
+}
+
+.difficulty_container {
+    display: flex;
+    justify-content: center;
+}
