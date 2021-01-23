@@ -164,3 +164,12 @@ table {
     display: flex;
     justify-content: center;
 }
+
+.disabled {
+    opacity: .5;
+    cursor: default;
+}
+
+.disabled:hover {
+    filter: brightness(1);
+}

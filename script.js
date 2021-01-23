@@ -1,6 +1,8 @@
 const mainContainerEl = document.querySelector('.content');
 
-const model = {};
+const model = {
+
+};
 const view = {};
 const control = {
 	history: [],
@@ -9,13 +11,27 @@ const control = {
 	totalShoots: null,
 	totalShipSunks: null,
 	isWithBot: null,
-	isStarted: false
+	isStarted: false,
+	randomGenerateShips: forWhat => {
+		let position = Math.floor(Math.random() * 2);
+		console.log('lol')
+	},
+	createShips: forWhat => {
+		const size = control.size;
+		model[ forWhat ].ships = [
+			{ location: [], size: 1, hits: 0, isSunk: false },
+			{ location: [], size: 1, hits: 0, isSunk: false },
+			{ location: [], size: 1, hits: 0, isSunk: false },
+			{ location: [], size: 1, hits: 0, isSunk: false },
+			{ location: [], size: 2, hits: 0, isSunk: false },
+			{ location: [], size: 2, hits: 0, isSunk: false },
+			{ location: [], size: 2, hits: 0, isSunk: false },
+			{ location: [], size: 3, hits: 0, isSunk: false },
+			{ location: [], size: 3, hits: 0, isSunk: false }
+		];
+		if (size === 10) model[ forWhat ].ships.push({ location: [], size: 4, hits: 0, isSunk: false });
+	}
 };
-
-const returnToMainScreen = () => {
-	control.isWithBot = null;
-	renderGameModeButtons();
-}
 
 const renderGameModeButtons = () => {
 	const gameModeEl = document.createElement('div');
@@ -46,27 +62,21 @@ const renderGameModeButtons = () => {
 
 window.onload = () => {
 	renderGameModeButtons();
-	// createBattleField(10);
-	// renderChooseFieldSize();
 	const backEl = document.querySelector('.back');
 	backEl.addEventListener('click', e => {
 		const lastHistory = control.history.pop();
 		if (lastHistory) {
 			while (mainContainerEl.firstChild) mainContainerEl.firstChild.remove();
-			lastHistory();
+			returnToPrevStage(lastHistory);
 		}
 	});
 }
 
 
-const setGameMode = isWithBot => {
-	control.isWithBot = isWithBot;
-	control.history.push(returnToMainScreen);
-	if (isWithBot) renderChooseDifficulty();
-	else renderChooseFieldSize();
-}
 
 window.control = control;
+window.model = model;
+window.view = view;
 
 const createBattleField = size => {
 	const letters = {
@@ -102,7 +112,10 @@ const createBattleField = size => {
 		for (let j = 0; j < size; j++) {
 			const fieldEl = document.createElement('div');
 			fieldEl.classList.add('field');
-			fieldEl.fieldId = i.toString() + j.toString();
+			const fieldId = i.toString() + j.toString();
+			fieldEl.fieldId = fieldId;
+			model.player.freePlacesToShips.push(fieldId);
+			if (control.isWithBot) model.bot.freePlacesToShips.push(fieldId);
 			rowEl.append(fieldEl);
 		}
 	}
@@ -131,6 +144,8 @@ const renderChooseFieldSize = () => {
 	fieldSizeButtonSeven.innerText = '7 X 7';
 	fieldSizeButtonSeven.addEventListener('click', e => {
 		setFieldSize(7);
+		control.createShips('player');
+		if (control.isWithBot) control.createShips('bot');
 		chooseFieldContainer.remove();
 	});
 	const fieldSizeButtonTen = document.createElement('div');
@@ -138,6 +153,8 @@ const renderChooseFieldSize = () => {
 	fieldSizeButtonTen.innerText = '10 X 10';
 	fieldSizeButtonTen.addEventListener('click', e => {
 		setFieldSize(10);
+		control.createShips('player');
+		if (control.isWithBot) control.createShips('bot');
 		chooseFieldContainer.remove();
 	});
 	fieldSizeButtonsContainer.append(...[ fieldSizeButtonSeven, fieldSizeButtonTen ]);
@@ -145,31 +162,22 @@ const renderChooseFieldSize = () => {
 	mainContainerEl.append(chooseFieldContainer);
 }
 
-const setFieldSize = size => {
-	control.size = size;
-	control.history.push(returnToChooseField);
-	createBattleField(size);
-	renderOptionButtons();
-}
-
-const returnToChooseField = () => {
-	control.size = null;
-	renderChooseFieldSize();
-}
 
 const renderOptionButtons = () => {
 	const optionButtonsContainer = document.createElement('div');
 	optionButtonsContainer.classList.add('options');
 	const startGameButton = document.createElement('div');
-	startGameButton.classList.add('start_game_button', 'button');
+	startGameButton.classList.add('start_game_button', 'button', 'disabled');
 	startGameButton.innerText = 'Начать игру';
 	const randomGenerateShipsButton = document.createElement('div');
 	randomGenerateShipsButton.classList.add('random_generate_button', 'button');
 	randomGenerateShipsButton.innerText = 'Сгенерировать случайно';
+	randomGenerateShipsButton.addEventListener('click', e => {
+		control.randomGenerateShips("player");
+	});
 	optionButtonsContainer.append(...[ startGameButton, randomGenerateShipsButton ]);
 	mainContainerEl.append(optionButtonsContainer);
 }
-
 
 const renderChooseDifficulty = () => {
 	const difficulties = [ 'Легкий', 'Средний', 'Сложный', 'Очень сложный' ];
@@ -194,15 +202,56 @@ const renderChooseDifficulty = () => {
 	mainContainerEl.append(chooseDifficulty);
 }
 
+const setGameMode = isWithBot => {
+	control.isWithBot = isWithBot;
+	model.player = {};
+	model.player.freePlacesToShips = [];
+	if (isWithBot) {
+		model.bot = {};
+		model.bot.freePlacesToShips = [];
+	}
+	control.history.push('main');
+	if (isWithBot) renderChooseDifficulty();
+	else renderChooseFieldSize();
+}
+
+const setFieldSize = size => {
+	control.size = size;
+	control.history.push('sizeField');
+	createBattleField(size);
+	renderOptionButtons();
+}
+
 const setDifficulty = difficulty => {
 	control.difficulty = difficulty;
-	control.history.push(returnToChooseDifficulty);
+	control.history.push('difficulty');
 	renderChooseFieldSize();
 }
 
-const returnToChooseDifficulty = () => {
-	control.difficulty = null;
-	renderChooseDifficulty();
+const returnToPrevStage = stage => {
+	const isWithBot = control.isWithBot;
+	switch (stage) {
+		case 'main':
+			control.isWithBot = null;
+			delete model.bot;
+			delete model.player;
+			renderGameModeButtons();
+			break;
+		case 'difficulty':
+			control.difficulty = null;
+			renderChooseDifficulty();
+			break;
+		case 'sizeField':
+			control.size = null;
+			model.player.freePlacesToShips = [];
+			delete model.player.ships;
+			if (isWithBot) {
+				delete model.bot.ships;
+				model.bot.freePlacesToShips = [];
+			}
+			renderChooseFieldSize();
+			break;
+	}
 }
 
 
