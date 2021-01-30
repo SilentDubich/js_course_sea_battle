@@ -173,3 +173,13 @@ table {
 .disabled:hover {
     filter: brightness(1);
 }
+
+.ship {
+    background: url("imgs/ship.png") no-repeat center;
+    background-size: contain;
+}
+
+.bomb {
+    background: url("imgs/bomb.png") no-repeat center;
+    background-size: contain;
+}
