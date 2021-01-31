@@ -1,9 +1,9 @@
 const mainContainerEl = document.querySelector('.content');
 
-const model = {
+const model = {};
 
-};
 const view = {};
+
 const control = {
 	history: [],
 	difficulty: null,
@@ -16,6 +16,7 @@ const control = {
 		const size = control.size;
 		const shipSize = ship.size;
 		const character = model[forWhat];
+
 		if (character.failCounter === 10) {
 			character.failCounter = 0;
 			deleteShipStyles();
@@ -23,6 +24,7 @@ const control = {
 			character.ships.forEach(ship => ship.location = []);
 			return character.ships.forEach(ship => control.randomGenerateShip(forWhat, ship));
 		}
+
 		ship.location = [];
 		let borders = [];
 		if (!character.borders) character.borders = [];
@@ -33,8 +35,8 @@ const control = {
 		const generateDirections = [];
 
 		const canGenerateUp = row - shipSize >= 0;
-		const canGenerateRight = col + shipSize < 10;
-		const canGenerateDown = row + shipSize < 10;
+		const canGenerateRight = col + shipSize < size;
+		const canGenerateDown = row + shipSize < size;
 		const canGenerateLeft = col - shipSize >= 0;
 
 		if (canGenerateUp) generateDirections.push('up');
@@ -60,15 +62,18 @@ const control = {
 
 				for (let i = 0; i < shipSize; i++) {
 					const coordination = (row - i).toString() + col.toString();
+
 					if (character.borders.indexOf(coordination) !== -1) {
 						model.player.failCounter++;
 						return control.randomGenerateShip(forWhat, ship);
 					}
+
 					leftBorder = (row - i).toString() + (col - 1).toString();
 					rightBorder = (row - i).toString() + (col + 1).toString();
 					borders.push(leftBorder, rightBorder, coordination);
 					ship.location.push(coordination);
 				}
+
 				borders.push(upBorder, upLeftBorder, upRightBorder, downBorder, downLeftBorder, downRightBorder);
 				break;
 			case 'right':
@@ -82,15 +87,18 @@ const control = {
 
 				for (let i = 0; i < shipSize; i++) {
 					const coordination = row.toString() + (col + i).toString();
+
 					if (character.borders.indexOf(coordination) !== -1) {
 						model.player.failCounter++;
 						return control.randomGenerateShip(forWhat, ship);
 					}
+
 					upBorder = (row + 1).toString() + (col + i).toString();
 					downBorder = (row - 1).toString() + (col + i).toString();
 					borders.push(upBorder, downBorder, coordination);
 					ship.location.push(coordination);
 				}
+
 				borders.push(leftBorder, upLeftBorder, downLeftBorder, rightBorder, upRightBorder, downRightBorder);
 				break;
 			case 'down':
@@ -104,15 +112,18 @@ const control = {
 
 				for (let i = 0; i < shipSize; i++) {
 					const coordination = (row + i).toString() + col.toString();
+
 					if (character.borders.indexOf(coordination) !== -1) {
 						model.player.failCounter++;
 						return control.randomGenerateShip(forWhat, ship);
 					}
+
 					leftBorder = (row + i).toString() + (col - 1).toString();
 					rightBorder = (row + i).toString() + (col + 1).toString();
 					borders.push(leftBorder, rightBorder, coordination);
 					ship.location.push(coordination);
 				}
+
 				borders.push(upBorder, upLeftBorder, upRightBorder, downBorder, downLeftBorder, downRightBorder);
 				break;
 			case 'left':
@@ -126,15 +137,18 @@ const control = {
 
 				for (let i = 0; i < shipSize; i++) {
 					const coordination = row.toString() + (col - i).toString();
+
 					if (character.borders.indexOf(coordination) !== -1) {
 						model.player.failCounter++;
 						return control.randomGenerateShip(forWhat, ship);
 					}
+
 					upBorder = (row + 1).toString() + (col - i).toString();
 					downBorder = (row - 1).toString() + (col - i).toString();
 					borders.push(upBorder, downBorder, coordination);
 					ship.location.push(coordination);
 				}
+
 				borders.push(leftBorder, upLeftBorder, downLeftBorder, rightBorder, upRightBorder, downRightBorder);
 				break;
 		}
@@ -158,7 +172,6 @@ const control = {
 		const size = control.size;
 		model[forWhat].ships = [
 			{ location: [], size: 3, hits: 0, isSunk: false },
-			{ location: [], size: 3, hits: 0, isSunk: false },
 			{ location: [], size: 2, hits: 0, isSunk: false },
 			{ location: [], size: 2, hits: 0, isSunk: false },
 			{ location: [], size: 2, hits: 0, isSunk: false },
@@ -167,7 +180,10 @@ const control = {
 			{ location: [], size: 1, hits: 0, isSunk: false },
 			{ location: [], size: 1, hits: 0, isSunk: false }
 		];
-		if (size === 10) model[forWhat].ships.unshift({ location: [], size: 4, hits: 0, isSunk: false });
+		if (size === 10) {
+			model[forWhat].ships.unshift({ location: [], size: 3, hits: 0, isSunk: false });
+			model[forWhat].ships.unshift({location: [], size: 4, hits: 0, isSunk: false});
+		}
 	}
 };
 
@@ -319,6 +335,7 @@ const renderOptionButtons = () => {
 		delete model.player.failCounter;
 		delete model.player.borders;
 		setShipStyles('player');
+		startGameButton.classList.remove('disabled');
 	});
 	optionButtonsContainer.append(...[ startGameButton, randomGenerateShipsButton ]);
 	mainContainerEl.append(optionButtonsContainer);
