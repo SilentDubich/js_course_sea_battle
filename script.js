@@ -16,24 +16,20 @@ const control = {
 		const size = control.size;
 		const shipSize = ship.size;
 		const character = model[forWhat];
-		const freePlaces = character.freePlacesToShips;
-		const places = [ ...freePlaces ];
-		const freePlacesCount = freePlaces.length;
-
-		ship.location = [];
-		const borders = [];
-		let position = Math.floor(Math.random() * freePlacesCount);
-		const chosenPlace = freePlaces[position];
-		if (!chosenPlace) {
-			character.freePlacesToShips = [];
-			const fields = [ ...mainContainerEl.querySelectorAll('.field') ];
-			fields.forEach(field => character.freePlacesToShips.push(field.fieldId));
-			character.ships.forEach(ship => control.randomGenerateShip(forWhat, ship));
+		if (character.failCounter === 10) {
+			character.failCounter = 0;
+			deleteShipStyles();
+			delete character.borders;
+			character.ships.forEach(ship => ship.location = []);
+			return character.ships.forEach(ship => control.randomGenerateShip(forWhat, ship));
 		}
-		const rowAndCol = chosenPlace.split('');
+		ship.location = [];
+		let borders = [];
+		if (!character.borders) character.borders = [];
 
-		const row = +rowAndCol[0];
-		const col = +rowAndCol[1];
+
+		const row = Math.floor(Math.random() * size);
+		const col = Math.floor(Math.random() * size);
 		const generateDirections = [];
 
 		const canGenerateUp = row - shipSize >= 0;
@@ -62,15 +58,18 @@ const control = {
 				downLeftBorder = (row + 1).toString() + (col - 1).toString();
 				downRightBorder = (row + 1).toString() + (col + 1).toString();
 
-				borders.push(upBorder, upLeftBorder, upRightBorder, downBorder, downLeftBorder, downRightBorder);
 				for (let i = 0; i < shipSize; i++) {
 					const coordination = (row - i).toString() + col.toString();
-					if (freePlaces.indexOf(coordination) === -1) return control.randomGenerateShip(forWhat, ship);
+					if (character.borders.indexOf(coordination) !== -1) {
+						model.player.failCounter++;
+						return control.randomGenerateShip(forWhat, ship);
+					}
 					leftBorder = (row - i).toString() + (col - 1).toString();
 					rightBorder = (row - i).toString() + (col + 1).toString();
 					borders.push(leftBorder, rightBorder, coordination);
 					ship.location.push(coordination);
 				}
+				borders.push(upBorder, upLeftBorder, upRightBorder, downBorder, downLeftBorder, downRightBorder);
 				break;
 			case 'right':
 				leftBorder = row.toString() + (col - 1).toString();
@@ -81,15 +80,18 @@ const control = {
 				upRightBorder = (row + 1).toString() + (col + shipSize).toString();
 				downRightBorder = (row - 1).toString() + (col + shipSize).toString();
 
-				borders.push(leftBorder, upLeftBorder, downLeftBorder, rightBorder, upRightBorder, downRightBorder);
 				for (let i = 0; i < shipSize; i++) {
 					const coordination = row.toString() + (col + i).toString();
-					if (freePlaces.indexOf(coordination) === -1) return control.randomGenerateShip(forWhat, ship);
+					if (character.borders.indexOf(coordination) !== -1) {
+						model.player.failCounter++;
+						return control.randomGenerateShip(forWhat, ship);
+					}
 					upBorder = (row + 1).toString() + (col + i).toString();
 					downBorder = (row - 1).toString() + (col + i).toString();
 					borders.push(upBorder, downBorder, coordination);
 					ship.location.push(coordination);
 				}
+				borders.push(leftBorder, upLeftBorder, downLeftBorder, rightBorder, upRightBorder, downRightBorder);
 				break;
 			case 'down':
 				upBorder = (row - 1).toString() + col.toString();
@@ -100,15 +102,18 @@ const control = {
 				downLeftBorder = (row + shipSize).toString() + (col - 1).toString();
 				downRightBorder = (row + shipSize).toString() + (col + 1).toString();
 
-				borders.push(upBorder, upLeftBorder, upRightBorder, downBorder, downLeftBorder, downRightBorder);
 				for (let i = 0; i < shipSize; i++) {
 					const coordination = (row + i).toString() + col.toString();
-					if (freePlaces.indexOf(coordination) === -1) return control.randomGenerateShip(forWhat, ship);
+					if (character.borders.indexOf(coordination) !== -1) {
+						model.player.failCounter++;
+						return control.randomGenerateShip(forWhat, ship);
+					}
 					leftBorder = (row + i).toString() + (col - 1).toString();
 					rightBorder = (row + i).toString() + (col + 1).toString();
 					borders.push(leftBorder, rightBorder, coordination);
 					ship.location.push(coordination);
 				}
+				borders.push(upBorder, upLeftBorder, upRightBorder, downBorder, downLeftBorder, downRightBorder);
 				break;
 			case 'left':
 				leftBorder = row.toString() + (col - shipSize).toString();
@@ -119,23 +124,34 @@ const control = {
 				upRightBorder = (row + 1).toString() + (col + 1).toString();
 				downRightBorder = (row - 1).toString() + (col + 1).toString();
 
-				borders.push(leftBorder, upLeftBorder, downLeftBorder, rightBorder, upRightBorder, downRightBorder);
 				for (let i = 0; i < shipSize; i++) {
 					const coordination = row.toString() + (col - i).toString();
-					if (freePlaces.indexOf(coordination) === -1) return control.randomGenerateShip(forWhat, ship);
+					if (character.borders.indexOf(coordination) !== -1) {
+						model.player.failCounter++;
+						return control.randomGenerateShip(forWhat, ship);
+					}
 					upBorder = (row + 1).toString() + (col - i).toString();
 					downBorder = (row - 1).toString() + (col - i).toString();
 					borders.push(upBorder, downBorder, coordination);
 					ship.location.push(coordination);
 				}
+				borders.push(leftBorder, upLeftBorder, downLeftBorder, rightBorder, upRightBorder, downRightBorder);
 				break;
 		}
-		deleteFromFreePlaces(borders, 'player');
-		console.group();
-		console.log('borders', borders)
-		console.log('freePlaces', places);
-		console.log('ship', ship);
-		console.groupEnd();
+		const fields = [ ...mainContainerEl.querySelectorAll('.field') ];
+		const fieldIds = fields.map(field => field.fieldId);
+		const normalizedBorders = [];
+		borders.forEach(border => {
+			const coord = fieldIds.find(fieldId => fieldId === border);
+			if (coord) normalizedBorders.push(border);
+		})
+		character.borders.push(...normalizedBorders);
+		character.failCounter = 0;
+		// console.group();
+		// console.log('borders', normalizedBorders)
+		// console.log('character.borders', character.borders);
+		// console.log('ship', ship);
+		// console.groupEnd();
 
 	},
 	createShips: forWhat => {
@@ -154,14 +170,6 @@ const control = {
 		if (size === 10) model[forWhat].ships.unshift({ location: [], size: 4, hits: 0, isSunk: false });
 	}
 };
-
-const deleteFromFreePlaces = (coords, forWhat) => {
-	const freePlaces = model[forWhat].freePlacesToShips;
-	coords.forEach(coord => {
-		const coordIndex = freePlaces.findIndex(place => place === coord);
-		if (coordIndex) freePlaces.splice(coordIndex, 1);
-	})
-}
 
 const setShipStyles = (forWhat) => {
 	const character = model[forWhat];
@@ -247,8 +255,6 @@ const createBattleField = size => {
 			fieldEl.classList.add('field');
 			const fieldId = i.toString() + j.toString();
 			fieldEl.fieldId = fieldId;
-			model.player.freePlacesToShips.push(fieldId);
-			if (control.isWithBot) model.bot.freePlacesToShips.push(fieldId);
 			rowEl.append(fieldEl);
 		}
 	}
@@ -274,9 +280,9 @@ const renderChooseFieldSize = () => {
 	fieldSizeButtonsContainer.classList.add('field_size_buttons');
 	const fieldSizeButtonSeven = document.createElement('div');
 	fieldSizeButtonSeven.classList.add('field_size_button', 'button');
-	fieldSizeButtonSeven.innerText = '7 X 7';
+	fieldSizeButtonSeven.innerText = '8 X 8';
 	fieldSizeButtonSeven.addEventListener('click', e => {
-		setFieldSize(7);
+		setFieldSize(8);
 		control.createShips('player');
 		if (control.isWithBot) control.createShips('bot');
 		chooseFieldContainer.remove();
@@ -307,10 +313,11 @@ const renderOptionButtons = () => {
 	randomGenerateShipsButton.innerText = 'Сгенерировать случайно';
 	randomGenerateShipsButton.addEventListener('click', e => {
 		deleteShipStyles();
-		model.player.freePlacesToShips = [];
-		const fields = [ ...mainContainerEl.querySelectorAll('.field') ];
-		fields.forEach(field => model.player.freePlacesToShips.push(field.fieldId));
+		model.player.failCounter = 0;
+		model.player.ships.forEach(ship => ship.location = []);
 		model.player.ships.forEach(ship => control.randomGenerateShip("player", ship));
+		delete model.player.failCounter;
+		delete model.player.borders;
 		setShipStyles('player');
 	});
 	optionButtonsContainer.append(...[ startGameButton, randomGenerateShipsButton ]);
@@ -343,11 +350,7 @@ const renderChooseDifficulty = () => {
 const setGameMode = isWithBot => {
 	control.isWithBot = isWithBot;
 	model.player = {};
-	model.player.freePlacesToShips = [];
-	if (isWithBot) {
-		model.bot = {};
-		model.bot.freePlacesToShips = [];
-	}
+	if (isWithBot) model.bot = {};
 	control.history.push('main');
 	if (isWithBot) renderChooseDifficulty();
 	else renderChooseFieldSize();
@@ -381,12 +384,8 @@ const returnToPrevStage = stage => {
 			break;
 		case 'sizeField':
 			control.size = null;
-			model.player.freePlacesToShips = [];
 			delete model.player.ships;
-			if (isWithBot) {
-				delete model.bot.ships;
-				model.bot.freePlacesToShips = [];
-			}
+			if (isWithBot) delete model.bot.ships;
 			renderChooseFieldSize();
 			break;
 	}
