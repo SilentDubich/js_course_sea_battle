@@ -183,3 +183,24 @@ table {
     background: url("imgs/bomb.png") no-repeat center;
     background-size: contain;
 }
+
+.pve_battle {
+    display: flex;
+    justify-content: space-between;
+}
+
+.player {
+    cursor: pointer;
+}
+
+.player .field {
+    height: 20px;
+}
+
+.player .row {
+    width: 25%;
+}
+
+.player .letter, .player .numbers {
+    display: none;
+}

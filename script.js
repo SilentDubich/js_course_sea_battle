@@ -64,7 +64,7 @@ const control = {
 					const coordination = (row - i).toString() + col.toString();
 
 					if (character.borders.indexOf(coordination) !== -1) {
-						model.player.failCounter++;
+						model[forWhat].failCounter++;
 						return control.randomGenerateShip(forWhat, ship);
 					}
 
@@ -89,7 +89,7 @@ const control = {
 					const coordination = row.toString() + (col + i).toString();
 
 					if (character.borders.indexOf(coordination) !== -1) {
-						model.player.failCounter++;
+						model[forWhat].failCounter++;
 						return control.randomGenerateShip(forWhat, ship);
 					}
 
@@ -114,7 +114,7 @@ const control = {
 					const coordination = (row + i).toString() + col.toString();
 
 					if (character.borders.indexOf(coordination) !== -1) {
-						model.player.failCounter++;
+						model[forWhat].failCounter++;
 						return control.randomGenerateShip(forWhat, ship);
 					}
 
@@ -139,7 +139,7 @@ const control = {
 					const coordination = row.toString() + (col - i).toString();
 
 					if (character.borders.indexOf(coordination) !== -1) {
-						model.player.failCounter++;
+						model[forWhat].failCounter++;
 						return control.randomGenerateShip(forWhat, ship);
 					}
 
@@ -161,6 +161,7 @@ const control = {
 		})
 		character.borders.push(...normalizedBorders);
 		character.failCounter = 0;
+		console.log()
 		// console.group();
 		// console.log('borders', normalizedBorders)
 		// console.log('character.borders', character.borders);
@@ -182,7 +183,7 @@ const control = {
 		];
 		if (size === 10) {
 			model[forWhat].ships.unshift({ location: [], size: 3, hits: 0, isSunk: false });
-			model[forWhat].ships.unshift({location: [], size: 4, hits: 0, isSunk: false});
+			model[forWhat].ships.unshift({ location: [], size: 4, hits: 0, isSunk: false });
 		}
 	}
 };
@@ -192,7 +193,11 @@ const setShipStyles = (forWhat) => {
 	const charactersShips = character.ships;
 	const coordsForStyles = [];
 	charactersShips.forEach(ship => coordsForStyles.push(...ship.location));
-	const fields = [ ...mainContainerEl.querySelectorAll('.field') ];
+	const playerField = mainContainerEl.querySelector('.player');
+	let fields;
+	if (playerField) fields = [ ...playerField.querySelectorAll('.field') ];
+	else fields = [ ...mainContainerEl.querySelectorAll('.field') ];
+	if (!fields) return;
 	coordsForStyles.forEach(coord => {
 		fields.forEach(field => {
 			if (field.fieldId === coord) {
@@ -234,7 +239,6 @@ const renderGameModeButtons = () => {
 	mainContainerEl.append(gameModeEl);
 }
 
-
 const createBattleField = size => {
 	const letters = {
 		'0': 'A',
@@ -251,7 +255,7 @@ const createBattleField = size => {
 	}
 	const battleFieldEl = document.createElement('div');
 	battleFieldEl.classList.add('battle_field');
-	mainContainerEl.append(battleFieldEl);
+	// mainContainerEl.append(battleFieldEl);
 	const rowsEl = document.createElement('div');
 	rowsEl.classList.add('rows');
 	battleFieldEl.append(rowsEl);
@@ -284,6 +288,7 @@ const createBattleField = size => {
 		numbersEl.append(numberEl);
 		if (k) numberEl.innerText = k.toString();
 	}
+	return battleFieldEl;
 }
 
 const renderChooseFieldSize = () => {
@@ -337,6 +342,11 @@ const renderOptionButtons = () => {
 		setShipStyles('player');
 		startGameButton.classList.remove('disabled');
 	});
+	startGameButton.addEventListener('click', e => {
+		if (startGameButton.classList.contains('disabled')) return;
+		while (mainContainerEl.firstChild) mainContainerEl.firstChild.remove();
+		startGame();
+	});
 	optionButtonsContainer.append(...[ startGameButton, randomGenerateShipsButton ]);
 	mainContainerEl.append(optionButtonsContainer);
 }
@@ -376,7 +386,8 @@ const setGameMode = isWithBot => {
 const setFieldSize = size => {
 	control.size = size;
 	control.history.push('sizeField');
-	createBattleField(size);
+	const battleFieldEl =  createBattleField(size);
+	mainContainerEl.append(battleFieldEl);
 	renderOptionButtons();
 }
 
@@ -384,6 +395,31 @@ const setDifficulty = difficulty => {
 	control.difficulty = difficulty;
 	control.history.push('difficulty');
 	renderChooseFieldSize();
+}
+
+const startGame = () => {
+	const size = control.size;
+	const botBattleFieldEl = createBattleField(size);
+	const botContainerEl = document.createElement('div');
+	botContainerEl.append(botBattleFieldEl);
+	botContainerEl.classList.add('bot');
+
+	const playerBattleFieldEl = createBattleField(size);
+	const playerContainerEl = document.createElement('div');
+	playerContainerEl.classList.add('player');
+	playerContainerEl.append(playerBattleFieldEl);
+
+	mainContainerEl.append(...[ botContainerEl, playerContainerEl ]);
+	mainContainerEl.classList.add('pve_battle');
+	const isWithBot = control.isWithBot;
+	control.history.push('battleField');
+	if (isWithBot) {
+		const bot = model.bot;
+		bot.ships.forEach(ship => control.randomGenerateShip('bot', ship));
+		delete bot.borders;
+		delete bot.failCounter;
+	}
+	setShipStyles('player');
 }
 
 const returnToPrevStage = stage => {
@@ -404,6 +440,14 @@ const returnToPrevStage = stage => {
 			delete model.player.ships;
 			if (isWithBot) delete model.bot.ships;
 			renderChooseFieldSize();
+			break;
+		case 'battleField':
+			const size = control.size;
+			const battleFieldEl = createBattleField(size);
+			mainContainerEl.append(battleFieldEl);
+			mainContainerEl.classList.remove('pve_battle');
+			renderOptionButtons();
+			setShipStyles('player');
 			break;
 	}
 }
