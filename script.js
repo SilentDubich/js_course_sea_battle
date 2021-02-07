@@ -22,11 +22,13 @@ const control = {
 			deleteShipStyles();
 			delete character.borders;
 			character.ships.forEach(ship => ship.location = []);
+			character.ships.forEach(ship => delete ship.reservedCoords);
 			return character.ships.forEach(ship => control.randomGenerateShip(forWhat, ship));
 		}
 
 		ship.location = [];
 		let borders = [];
+		if (!ship.reservedCoords) ship.reservedCoords = [];
 		if (!character.borders) character.borders = [];
 
 
@@ -72,9 +74,11 @@ const control = {
 					rightBorder = (row - i).toString() + (col + 1).toString();
 					borders.push(leftBorder, rightBorder, coordination);
 					ship.location.push(coordination);
+					ship.reservedCoords.push(leftBorder, rightBorder);
 				}
 
 				borders.push(upBorder, upLeftBorder, upRightBorder, downBorder, downLeftBorder, downRightBorder);
+				ship.reservedCoords.push(upBorder, upLeftBorder, upRightBorder, downBorder, downLeftBorder, downRightBorder);
 				break;
 			case 'right':
 				leftBorder = row.toString() + (col - 1).toString();
@@ -97,9 +101,11 @@ const control = {
 					downBorder = (row - 1).toString() + (col + i).toString();
 					borders.push(upBorder, downBorder, coordination);
 					ship.location.push(coordination);
+					ship.reservedCoords.push(upBorder, downBorder);
 				}
 
 				borders.push(leftBorder, upLeftBorder, downLeftBorder, rightBorder, upRightBorder, downRightBorder);
+				ship.reservedCoords.push(leftBorder, upLeftBorder, downLeftBorder, rightBorder, upRightBorder, downRightBorder);
 				break;
 			case 'down':
 				upBorder = (row - 1).toString() + col.toString();
@@ -122,9 +128,11 @@ const control = {
 					rightBorder = (row + i).toString() + (col + 1).toString();
 					borders.push(leftBorder, rightBorder, coordination);
 					ship.location.push(coordination);
+					ship.reservedCoords.push(leftBorder, rightBorder);
 				}
 
 				borders.push(upBorder, upLeftBorder, upRightBorder, downBorder, downLeftBorder, downRightBorder);
+				ship.reservedCoords.push(upBorder, upLeftBorder, upRightBorder, downBorder, downLeftBorder, downRightBorder);
 				break;
 			case 'left':
 				leftBorder = row.toString() + (col - shipSize).toString();
@@ -147,27 +155,29 @@ const control = {
 					downBorder = (row - 1).toString() + (col - i).toString();
 					borders.push(upBorder, downBorder, coordination);
 					ship.location.push(coordination);
+					ship.reservedCoords.push(upBorder, downBorder);
 				}
 
 				borders.push(leftBorder, upLeftBorder, downLeftBorder, rightBorder, upRightBorder, downRightBorder);
+				ship.reservedCoords.push(leftBorder, upLeftBorder, downLeftBorder, rightBorder, upRightBorder, downRightBorder);
 				break;
 		}
 		const fields = [ ...mainContainerEl.querySelectorAll('.field') ];
 		const fieldIds = fields.map(field => field.fieldId);
 		const normalizedBorders = [];
+		const normalizedReservedCoords = [];
+		ship.reservedCoords.forEach(border => {
+			const coord = fieldIds.find(fieldId => fieldId === border);
+			if (coord) normalizedReservedCoords.push(border);
+		});
+
 		borders.forEach(border => {
 			const coord = fieldIds.find(fieldId => fieldId === border);
 			if (coord) normalizedBorders.push(border);
-		})
+		});
+		ship.reservedCoords = normalizedReservedCoords;
 		character.borders.push(...normalizedBorders);
 		character.failCounter = 0;
-		console.log()
-		// console.group();
-		// console.log('borders', normalizedBorders)
-		// console.log('character.borders', character.borders);
-		// console.log('ship', ship);
-		// console.groupEnd();
-
 	},
 	createShips: forWhat => {
 		const size = control.size;
@@ -187,6 +197,37 @@ const control = {
 		}
 	}
 };
+
+const firePlayer = coord => {
+	const bot = model.bot;
+	const botShips = bot.ships;
+	const enemyShip = botShips.find(ship => ship.location.indexOf(coord) !== -1);
+	const botField = mainContainerEl.querySelector('.bot');
+	const botFields = [ ...botField.querySelectorAll('.field') ];
+	const targetField = botFields.find(field => field.fieldId === coord);
+
+	if (!enemyShip) {
+		const isWasHits = targetField.classList.contains('miss') || targetField.classList.contains('hit');
+
+		if (isWasHits) return;
+		else return targetField.classList.add('miss');
+
+		return;
+	}
+
+	const locationIndex = enemyShip.location.findIndex(loc => loc === coord);
+	enemyShip.location.splice(locationIndex, 1);
+	enemyShip.hits++;
+	targetField.classList.add('hit');
+	if (enemyShip.hits === enemyShip.size) {
+		enemyShip.reservedCoords.forEach(resCoord => {
+			const field = botFields.find(botField => botField.fieldId === resCoord);
+			if (field) field.classList.add('bomb');
+		})
+		enemyShip.isSunk = true;
+	}
+}
+
 
 const setShipStyles = (forWhat) => {
 	const character = model[forWhat];
@@ -374,9 +415,14 @@ const renderChooseDifficulty = () => {
 	mainContainerEl.append(chooseDifficulty);
 }
 
+
+
+
+
+
 const setGameMode = isWithBot => {
 	control.isWithBot = isWithBot;
-	model.player = {};
+	model.player = { firePlayer };
 	if (isWithBot) model.bot = {};
 	control.history.push('main');
 	if (isWithBot) renderChooseDifficulty();
@@ -401,6 +447,12 @@ const startGame = () => {
 	const size = control.size;
 	const botBattleFieldEl = createBattleField(size);
 	const botContainerEl = document.createElement('div');
+	botContainerEl.addEventListener('click', e => {
+		const target = e.target;
+		if (!target.classList.contains('field')) return;
+		const fieldId = target.fieldId;
+		model.player.firePlayer(fieldId);
+	});
 	botContainerEl.append(botBattleFieldEl);
 	botContainerEl.classList.add('bot');
 
