@@ -8,10 +8,11 @@ const control = {
 	history: [],
 	difficulty: null,
 	size: null,
-	totalShoots: null,
-	totalShipSunks: null,
+	totalShoots: 0,
+	totalShipSunks: 0,
 	isWithBot: null,
 	isStarted: false,
+	isPlayerShooting: true,
 	randomGenerateShip: (forWhat, ship) => {
 		const size = control.size;
 		const shipSize = ship.size;
@@ -67,6 +68,7 @@ const control = {
 
 					if (character.borders.indexOf(coordination) !== -1) {
 						model[forWhat].failCounter++;
+						delete ship.reservedCoords;
 						return control.randomGenerateShip(forWhat, ship);
 					}
 
@@ -195,41 +197,105 @@ const control = {
 			model[forWhat].ships.unshift({ location: [], size: 3, hits: 0, isSunk: false });
 			model[forWhat].ships.unshift({ location: [], size: 4, hits: 0, isSunk: false });
 		}
+	},
+	isShipSunk: (ship, fields) => {
+		if (ship.hits === ship.size) {
+			ship.reservedCoords.forEach(resCoord => {
+				const field = fields.find(botField => botField.fieldId === resCoord);
+				if (field) field.classList.add('bomb');
+			})
+			ship.isSunk = true;
+			return true;
+		}
+		return false;
 	}
 };
 
+
 const firePlayer = coord => {
+	if (!control.isPlayerShooting) return;
+	control.totalShoots++;
+	if (control.totalShoots === 1) control.isStarted = true;
+
 	const bot = model.bot;
 	const botShips = bot.ships;
-	const enemyShip = botShips.find(ship => ship.location.indexOf(coord) !== -1);
 	const botField = mainContainerEl.querySelector('.bot');
 	const botFields = [ ...botField.querySelectorAll('.field') ];
+
 	const targetField = botFields.find(field => field.fieldId === coord);
+	const enemyShip = botShips.find(ship => ship.location.indexOf(coord) !== -1);
+	const isWasHits = targetField.classList.contains('miss') || targetField.classList.contains('hit') || targetField.classList.contains('bomb');
 
 	if (!enemyShip) {
-		const isWasHits = targetField.classList.contains('miss') || targetField.classList.contains('hit');
+		control.isPlayerShooting = false;
+		if (!isWasHits) targetField.classList.add('miss');
 
-		if (isWasHits) return;
-		else return targetField.classList.add('miss');
-
-		return;
+		return setTimeout(model.bot.fireBotEasy, 500);
 	}
 
-	const locationIndex = enemyShip.location.findIndex(loc => loc === coord);
-	enemyShip.location.splice(locationIndex, 1);
+	if (isWasHits) return;
 	enemyShip.hits++;
 	targetField.classList.add('hit');
-	if (enemyShip.hits === enemyShip.size) {
-		enemyShip.reservedCoords.forEach(resCoord => {
-			const field = botFields.find(botField => botField.fieldId === resCoord);
-			if (field) field.classList.add('bomb');
-		})
-		enemyShip.isSunk = true;
+	control.isShipSunk(enemyShip, botFields);
+}
+
+
+const fireBotEasy = () => {
+	control.totalShoots++;
+
+	const player = model.player;
+	const playerShips = player.ships;
+	const playerField = mainContainerEl.querySelector('.player');
+	const playerFields = [ ...playerField.querySelectorAll('.field') ];
+
+	const availableFieldsToShoot = playerFields.filter(field => !field.classList.contains('miss') && !field.classList.contains('hit') && !field.classList.contains('bomb'));
+	const availableFieldsToShootLength = availableFieldsToShoot.length;
+	const shoot = Math.floor(Math.random() * availableFieldsToShootLength);
+	const targetField = availableFieldsToShoot[shoot];
+
+	const targetShip = playerShips.find(ship => ship.location.indexOf(targetField.fieldId) !== -1);
+	if (!targetShip) {
+		control.isPlayerShooting = true;
+		if (model.bot.firstHit) delete model.bot.firstHit;
+		return targetField.classList.add('miss');
+	}
+
+	targetShip.hits++;
+	targetField.classList.add('hit');
+	const isShipSunk = control.isShipSunk(targetShip, playerFields);
+	if (isShipSunk) {
+		return setTimeout(model.bot.fireBotEasy, 500);
+	} else {
+		model.bot.firstHit = {};
+		model.bot.firstHit.shootCoord = targetField;
+		control.isPlayerShooting = true;
 	}
 }
 
 
-const setShipStyles = (forWhat) => {
+// const fireBotSecondShoot = (oldShootCoord, ship, playerField) => {
+// 	const [ row, col ] = oldShootCoord.split('');
+// 	const leftCoord = `${ row - 1 }${ col }`;
+// 	const rightCoord = `${ row + 1 }${ col }`;
+// 	const downCoord = `${ row }${ col - 1 }`;
+// 	const upCoord = `${ row }${ col + 1 }`;
+// 	const coords = [ leftCoord, upCoord, rightCoord, downCoord ];
+// 	const availableCoords = playerField.map(field => coords.indexOf(field.fieldId) !== -1 && !field.classList.contains('miss') && !field.classList.contains('hit') && !field.classList.contains('bomb'));
+// 	const coordsLength = availableCoords.length;
+// 	const indexToShoot = Math.floor(Math.random() * coordsLength);
+// 	let coordToShoot = coords[indexToShoot];
+//
+// 	let isHit = ship.location.indexOf(coordToShoot) !== -1;
+// 	let targetField = playerField.find(field => field.fieldId === coordToShoot);
+// 	targetField.classList.add('hit');
+// 	while (isHit) {
+// 		const [ row, col ] = coordToShoot.split('');
+//
+// 	}
+// }
+
+
+const setShipStyles = forWhat => {
 	const character = model[forWhat];
 	const charactersShips = character.ships;
 	const coordsForStyles = [];
@@ -248,10 +314,12 @@ const setShipStyles = (forWhat) => {
 	})
 }
 
+
 const deleteShipStyles = () => {
 	const fields = [ ...mainContainerEl.querySelectorAll('.field') ];
 	fields.forEach(field => field.classList.remove('ship'));
 }
+
 
 const renderGameModeButtons = () => {
 	const gameModeEl = document.createElement('div');
@@ -279,6 +347,7 @@ const renderGameModeButtons = () => {
 	gameModeEl.append(...[ chooseGameModeEl, buttonsContainerEl ]);
 	mainContainerEl.append(gameModeEl);
 }
+
 
 const createBattleField = size => {
 	const letters = {
@@ -332,6 +401,7 @@ const createBattleField = size => {
 	return battleFieldEl;
 }
 
+
 const renderChooseFieldSize = () => {
 	const chooseFieldContainer = document.createElement('div');
 	chooseFieldContainer.classList.add('choose_field');
@@ -377,6 +447,7 @@ const renderOptionButtons = () => {
 		deleteShipStyles();
 		model.player.failCounter = 0;
 		model.player.ships.forEach(ship => ship.location = []);
+		model.player.ships.forEach(ship => ship.reservedCoords && delete ship.reservedCoords);
 		model.player.ships.forEach(ship => control.randomGenerateShip("player", ship));
 		delete model.player.failCounter;
 		delete model.player.borders;
@@ -391,6 +462,7 @@ const renderOptionButtons = () => {
 	optionButtonsContainer.append(...[ startGameButton, randomGenerateShipsButton ]);
 	mainContainerEl.append(optionButtonsContainer);
 }
+
 
 const renderChooseDifficulty = () => {
 	const difficulties = [ 'Легкий', 'Средний', 'Сложный', 'Очень сложный' ];
@@ -423,11 +495,12 @@ const renderChooseDifficulty = () => {
 const setGameMode = isWithBot => {
 	control.isWithBot = isWithBot;
 	model.player = { firePlayer };
-	if (isWithBot) model.bot = {};
+	if (isWithBot) model.bot = { fireBotEasy };
 	control.history.push('main');
 	if (isWithBot) renderChooseDifficulty();
 	else renderChooseFieldSize();
 }
+
 
 const setFieldSize = size => {
 	control.size = size;
@@ -437,11 +510,13 @@ const setFieldSize = size => {
 	renderOptionButtons();
 }
 
+
 const setDifficulty = difficulty => {
 	control.difficulty = difficulty;
 	control.history.push('difficulty');
 	renderChooseFieldSize();
 }
+
 
 const startGame = () => {
 	const size = control.size;
@@ -500,6 +575,12 @@ const returnToPrevStage = stage => {
 			mainContainerEl.classList.remove('pve_battle');
 			renderOptionButtons();
 			setShipStyles('player');
+			if (isWithBot) {
+				model.bot.ships.forEach(ship => {
+					ship.location = [];
+					delete ship.reservedCoords;
+				})
+			}
 			break;
 	}
 }

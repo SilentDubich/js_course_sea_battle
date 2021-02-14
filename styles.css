@@ -208,11 +208,11 @@ table {
 }
 
 .player .field {
-	height: 20px;
+	height: 40px;
 }
 
 .player .row {
-	width: 25%;
+	width: 50%;
 }
 
 .player .letter, .player .numbers {
