@@ -268,31 +268,98 @@ const fireBotEasy = () => {
 	} else {
 		model.bot.firstHit = {};
 		model.bot.firstHit.shootCoord = targetField;
-		control.isPlayerShooting = true;
+		fireBotSecondShoot(targetField.fieldId, targetShip, playerFields);
 	}
 }
 
 
-// const fireBotSecondShoot = (oldShootCoord, ship, playerField) => {
-// 	const [ row, col ] = oldShootCoord.split('');
-// 	const leftCoord = `${ row - 1 }${ col }`;
-// 	const rightCoord = `${ row + 1 }${ col }`;
-// 	const downCoord = `${ row }${ col - 1 }`;
-// 	const upCoord = `${ row }${ col + 1 }`;
-// 	const coords = [ leftCoord, upCoord, rightCoord, downCoord ];
-// 	const availableCoords = playerField.map(field => coords.indexOf(field.fieldId) !== -1 && !field.classList.contains('miss') && !field.classList.contains('hit') && !field.classList.contains('bomb'));
-// 	const coordsLength = availableCoords.length;
-// 	const indexToShoot = Math.floor(Math.random() * coordsLength);
-// 	let coordToShoot = coords[indexToShoot];
-//
-// 	let isHit = ship.location.indexOf(coordToShoot) !== -1;
-// 	let targetField = playerField.find(field => field.fieldId === coordToShoot);
-// 	targetField.classList.add('hit');
-// 	while (isHit) {
-// 		const [ row, col ] = coordToShoot.split('');
-//
-// 	}
-// }
+const fireBotSecondShoot = (oldShootCoord, ship, playerField) => {
+	const rowAndCol = oldShootCoord.toString().split('');
+	const [ row, col ] = rowAndCol;
+	const leftCoord = `${ row }${ +col - 1 }`;
+	const rightCoord = `${ row }${ +col + 1 }`;
+	const downCoord = `${ +row - 1 }${ col }`;
+	const upCoord = `${ +row + 1 }${ col }`;
+	const coords = [ leftCoord, upCoord, rightCoord, downCoord ];
+	const availableCoords = playerField.filter(field => coords.indexOf(field.fieldId) !== -1 && !field.classList.contains('miss') && !field.classList.contains('hit') && !field.classList.contains('bomb'));
+	const coordsLength = availableCoords.length;
+	const indexToShoot = Math.floor(Math.random() * coordsLength);
+	let coordToShoot = coords[indexToShoot];
+
+	let isHit = ship.location.indexOf(coordToShoot) !== -1;
+	control.totalShoots++;
+	let targetField = playerField.find(field => field.fieldId === coordToShoot);
+	if (!isHit) {
+		control.isPlayerShooting = true;
+		return targetField.classList.add('miss');
+	}
+	targetField.classList.add('hit');
+	let isSunkShip = control.isShipSunk(ship, playerField);
+	if (isSunkShip) {
+		delete model.bot.firstHit;
+		return setTimeout(model.bot.fireBotEasy, 500);
+	}
+	let count = 1;
+	while (isHit) {
+		const rowAndCol = targetField.fieldId.split('');
+		const [ row, col ] = rowAndCol;
+		const isUp = coordToShoot - oldShootCoord >= 10;
+		const isRight = coordToShoot - oldShootCoord >= 1;
+		const isDown = coordToShoot - oldShootCoord <= -10;
+		const isLeft = coordToShoot - oldShootCoord <= -1;
+		if (isUp) {
+			model.bot.firstHit.direction = 'up';
+			coordToShoot = `${ row + 1 }${ col }`;
+
+			targetField = playerField.find(field => field.fieldId === coordToShoot && !field.classList.contains('miss') && !field.classList.contains('hit') && !field.classList.contains('bomb'));
+
+			if (!targetField) coordToShoot = `${ row - count }${ col }`;
+			else repeatedShoot(ship, targetField, playerField, coordToShoot);
+
+		} else if (isRight) {
+			model.bot.firstHit.direction = 'right';
+			coordToShoot = `${ row }${ col + 1 }`;
+
+			targetField = playerField.find(field => field.fieldId === coordToShoot && !field.classList.contains('miss') && !field.classList.contains('hit') && !field.classList.contains('bomb'));
+
+			if (!targetField) coordToShoot = `${ row + count }${ col }`;
+			else repeatedShoot(ship, targetField, playerField, coordToShoot);
+
+		} else if (isDown) {
+			model.bot.firstHit.direction = 'down';
+			coordToShoot = `${ row - 1 }${ col }`;
+
+			targetField = playerField.find(field => field.fieldId === coordToShoot && !field.classList.contains('miss') && !field.classList.contains('hit') && !field.classList.contains('bomb'));
+
+			if (!targetField) coordToShoot = `${ row + count }${ col }`;
+			else repeatedShoot(ship, targetField, playerField, coordToShoot);
+
+		} else if (isLeft) {
+			model.bot.firstHit.direction = 'left';
+			coordToShoot = `${ row }${ col - 1 }`;
+
+			targetField = playerField.find(field => field.fieldId === coordToShoot && !field.classList.contains('miss') && !field.classList.contains('hit') && !field.classList.contains('bomb'));
+
+			if (!targetField) coordToShoot = `${ row + count }${ col }`;
+			else repeatedShoot(ship, targetField, playerField, coordToShoot);
+
+		}
+		count++;
+	}
+}
+
+
+const repeatedShoot = (ship, targetField, playerField, coordToShoot) => {
+	const isHit = ship.location.indexOf(coordToShoot) !== -1;
+	control.totalShoots++;
+	if (!isHit) return control.isPlayerShooting = true;
+	targetField.classList.add('hit');
+	const isSunkShip = control.isShipSunk(ship, playerField);
+	if (isSunkShip) {
+		delete model.bot.firstHit;
+		return setTimeout(model.bot.fireBotEasy, 500);
+	}
+}
 
 
 const setShipStyles = forWhat => {
