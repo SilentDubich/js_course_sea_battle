@@ -7,6 +7,12 @@ const view = {};
 const control = {
 	history: [],
 	difficulty: null,
+	probabilities: {
+		'easy' : 0,
+		'normal' : 0.25,
+		'hard' : 0.5,
+		'very hard' : 0.75
+	},
 	size: null,
 	totalShoots: 0,
 	totalShipSunks: 0,
@@ -96,6 +102,7 @@ const control = {
 
 					if (character.borders.indexOf(coordination) !== -1) {
 						model[forWhat].failCounter++;
+						delete ship.reservedCoords;
 						return control.randomGenerateShip(forWhat, ship);
 					}
 
@@ -123,6 +130,7 @@ const control = {
 
 					if (character.borders.indexOf(coordination) !== -1) {
 						model[forWhat].failCounter++;
+						delete ship.reservedCoords;
 						return control.randomGenerateShip(forWhat, ship);
 					}
 
@@ -150,6 +158,7 @@ const control = {
 
 					if (character.borders.indexOf(coordination) !== -1) {
 						model[forWhat].failCounter++;
+						delete ship.reservedCoords;
 						return control.randomGenerateShip(forWhat, ship);
 					}
 
@@ -233,7 +242,7 @@ const firePlayer = coord => {
 		control.isPlayerShooting = false;
 		if (!isWasHits) targetField.classList.add('miss');
 
-		return setTimeout(model.bot.fireBotEasy, 500);
+		return setTimeout(model.bot.fireBot, 500);
 	}
 
 	enemyShip.hits++;
@@ -242,13 +251,15 @@ const firePlayer = coord => {
 }
 
 
-const fireBotEasy = () => {
+const fireBot = () => {
 	if (model.bot.firstHit) {
 		const { shootCoord, ship } = model.bot.firstHit;
 		return setTimeout(fireBotSecondShoot, 500, shootCoord, ship);
 	}
 	control.totalShoots++;
-
+	const probabilities = control.probabilities;
+	const difficulty = control.difficulty;
+	const probability = probabilities[difficulty];
 	const player = model.player;
 	const playerShips = player.ships;
 	const playerField = mainContainerEl.querySelector('.player');
@@ -256,8 +267,18 @@ const fireBotEasy = () => {
 
 	const availableFieldsToShoot = playerFields.filter(field => !field.classList.contains('miss') && !field.classList.contains('hit') && !field.classList.contains('bomb'));
 	const availableFieldsToShootLength = availableFieldsToShoot.length;
-	const shoot = Math.floor(Math.random() * availableFieldsToShootLength);
-	const targetField = availableFieldsToShoot[shoot];
+	const playerShipsToShoot = model.player.ships.map(ship => ship.location);
+	let playerShipsToShootCoords = [];
+	playerShipsToShoot.forEach(ship => playerShipsToShootCoords = [ ...playerShipsToShootCoords, ...ship ]);
+	const availableToShootsCoordsPlayerShips = availableFieldsToShoot.filter(field => playerShipsToShootCoords.indexOf(field.fieldId) !== -1);
+	const availableToShootsCoordsPlayerShipsLength = availableToShootsCoordsPlayerShips.length;
+
+	let isShootToPlayer = false;
+	const random = Math.random();
+	if (random < probability) isShootToPlayer = true;
+
+	const shoot = isShootToPlayer ? Math.floor(Math.random() * availableToShootsCoordsPlayerShipsLength) : Math.floor(Math.random() * availableFieldsToShootLength);
+	const targetField = isShootToPlayer ? availableToShootsCoordsPlayerShips[shoot] : availableFieldsToShoot[shoot];
 
 	const targetShip = playerShips.find(ship => ship.location.indexOf(targetField.fieldId) !== -1);
 	if (!targetShip) {
@@ -271,7 +292,7 @@ const fireBotEasy = () => {
 	targetField.classList.add('hit');
 	const isShipSunk = control.isShipSunk(targetShip, '.player');
 	if (isShipSunk) {
-		return setTimeout(model.bot.fireBotEasy, 500);
+		return setTimeout(model.bot.fireBot, 500);
 	} else {
 		model.bot.firstHit = {};
 		model.bot.firstHit.shootCoord = targetField.fieldId;
@@ -279,7 +300,6 @@ const fireBotEasy = () => {
 		return setTimeout(fireBotSecondShoot, 500, targetField.fieldId, targetShip);
 	}
 }
-
 
 const fireBotSecondShoot = (oldShootCoord, ship) => {
 	const playerBattleField = mainContainerEl.querySelector('.player');
@@ -316,7 +336,7 @@ const fireBotSecondShoot = (oldShootCoord, ship) => {
 		if (isSunkShip) {
 			delete model.bot.firstHit;
 			if (model.bot.secondHit) delete model.bot.secondHit;
-			return setTimeout(model.bot.fireBotEasy, 500);
+			return setTimeout(model.bot.fireBot, 500);
 		}
 	} else {
 		const direction = model.bot.firstHit.direction;
@@ -426,7 +446,7 @@ const repeatedShoot = (ship, targetField, playerField, coordToShoot) => {
 	if (isSunkShip) {
 		delete model.bot.firstHit;
 		if (model.bot.secondHit) delete model.bot.secondHit;
-		setTimeout(model.bot.fireBotEasy, 500);
+		setTimeout(model.bot.fireBot, 500);
 		return isHit;
 	}
 	else {
@@ -606,6 +626,7 @@ const renderOptionButtons = () => {
 
 const renderChooseDifficulty = () => {
 	const difficulties = [ 'Легкий', 'Средний', 'Сложный', 'Очень сложный' ];
+	const difficultiesEng = [ 'easy', 'normal', 'hard', 'very hard' ];
 	const chooseDifficulty = document.createElement('div');
 	chooseDifficulty.classList.add('choose_difficulty');
 	const difficultyTextEl = document.createElement('div');
@@ -613,12 +634,12 @@ const renderChooseDifficulty = () => {
 	difficultyTextEl.innerText = 'Выберите уровень сложности:';
 	const difficultyContainer = document.createElement('div');
 	difficultyContainer.classList.add('difficulty_container');
-	difficulties.forEach(difficulty => {
+	difficulties.forEach((difficulty, i) => {
 		const difficultyEl = document.createElement('div');
 		difficultyEl.classList.add('button', 'difficulty');
 		difficultyEl.innerText = difficulty;
 		difficultyEl.addEventListener('click', e => {
-			setDifficulty(difficulty);
+			setDifficulty(difficultiesEng[i]);
 			chooseDifficulty.remove();
 		});
 		difficultyContainer.append(difficultyEl);
@@ -628,14 +649,10 @@ const renderChooseDifficulty = () => {
 }
 
 
-
-
-
-
 const setGameMode = isWithBot => {
 	control.isWithBot = isWithBot;
 	model.player = { firePlayer };
-	if (isWithBot) model.bot = { fireBotEasy };
+	if (isWithBot) model.bot = { fireBot };
 	control.history.push('main');
 	if (isWithBot) renderChooseDifficulty();
 	else renderChooseFieldSize();
