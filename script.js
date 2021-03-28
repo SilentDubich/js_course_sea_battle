@@ -525,7 +525,6 @@ const createBattleField = size => {
 	}
 	const battleFieldEl = document.createElement('div');
 	battleFieldEl.classList.add('battle_field');
-	// mainContainerEl.append(battleFieldEl);
 	const rowsEl = document.createElement('div');
 	rowsEl.classList.add('rows');
 	battleFieldEl.append(rowsEl);
@@ -575,8 +574,6 @@ const renderChooseFieldSize = () => {
 	fieldSizeButtonSeven.innerText = '8 X 8';
 	fieldSizeButtonSeven.addEventListener('click', e => {
 		setFieldSize(8);
-		control.createShips('player');
-		if (control.isWithBot) control.createShips('bot');
 		chooseFieldContainer.remove();
 	});
 	const fieldSizeButtonTen = document.createElement('div');
@@ -584,8 +581,6 @@ const renderChooseFieldSize = () => {
 	fieldSizeButtonTen.innerText = '10 X 10';
 	fieldSizeButtonTen.addEventListener('click', e => {
 		setFieldSize(10);
-		control.createShips('player');
-		if (control.isWithBot) control.createShips('bot');
 		chooseFieldContainer.remove();
 	});
 	fieldSizeButtonsContainer.append(...[ fieldSizeButtonSeven, fieldSizeButtonTen ]);
@@ -648,6 +643,54 @@ const renderChooseDifficulty = () => {
 	mainContainerEl.append(chooseDifficulty);
 }
 
+const renderShipsToDragDrop = () => {
+	const dragDropContainerEl = document.createElement('div');
+	dragDropContainerEl.classList.add('drag_drop');
+	const player = model.player;
+	window.shipsStartPoints = {};
+	window.startPointAbscissa = [];
+	window.startPointOrdinate = [];
+	player.ships.forEach((ship, i) => {
+		const shipSize = ship.size;
+		const shipContainerEl = document.createElement('div');
+		shipContainerEl.classList.add('drag_drop_ship_container');
+		for (let i = 0; i < shipSize; i++) {
+			const shipEl = document.createElement('div');
+			shipEl.classList.add('ship', 'drag_drop_ship');
+			shipContainerEl.append(shipEl);
+		}
+
+		shipContainerEl.addEventListener('mousedown', e => {
+			const clickPlaceX = e.clientX;
+			const clickPlaceY = e.clientY;
+			const shipCoords = shipContainerEl.getBoundingClientRect();
+			const startAbscissa = shipCoords.x;
+			const startOrdinate = shipCoords.y;
+			const shiftX = clickPlaceX - startAbscissa;
+			const shiftY = clickPlaceY - startOrdinate;
+			if (!window.shipsStartPoints[i]) window.shipsStartPoints[i] = { startX: startAbscissa, startY: startOrdinate };
+			const startX = window.shipsStartPoints[i].startX;
+			const startY = window.shipsStartPoints[i].startY;
+			const moveShip = e => {
+				const currentCursorPlaceX = e.pageX;
+				const currentCursorPlaceY = e.pageY;
+				const diffX = currentCursorPlaceX - startX - shiftX;
+				const diffY = currentCursorPlaceY - startY - shiftY;
+				shipContainerEl.style.transform = `translate(${ diffX }px, ${ diffY }px`;
+			}
+
+			window.addEventListener('mousemove', moveShip);
+			const cancelEventListeners = e => {
+				window.removeEventListener('mousemove', moveShip);
+				window.removeEventListener('mouseup', cancelEventListeners);
+			}
+			window.addEventListener('mouseup', cancelEventListeners);
+		});
+
+		dragDropContainerEl.append(shipContainerEl);
+	});
+	mainContainerEl.append(dragDropContainerEl);
+}
 
 const setGameMode = isWithBot => {
 	control.isWithBot = isWithBot;
@@ -662,8 +705,11 @@ const setGameMode = isWithBot => {
 const setFieldSize = size => {
 	control.size = size;
 	control.history.push('sizeField');
-	const battleFieldEl =  createBattleField(size);
+	const battleFieldEl = createBattleField(size);
 	mainContainerEl.append(battleFieldEl);
+	control.createShips('player');
+	if (control.isWithBot) control.createShips('bot');
+	renderShipsToDragDrop();
 	renderOptionButtons();
 }
 
@@ -744,6 +790,7 @@ const returnToPrevStage = stage => {
 
 window.onload = () => {
 	renderGameModeButtons();
+	// setFieldSize(10);
 	const backEl = document.querySelector('.back');
 	backEl.addEventListener('click', e => {
 		const lastHistory = control.history.pop();
