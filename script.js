@@ -650,17 +650,20 @@ const renderShipsToDragDrop = () => {
 	window.shipsStartPoints = {};
 	window.startPointAbscissa = [];
 	window.startPointOrdinate = [];
+	window.shipsOnBattleField = {};
 	player.ships.forEach((ship, i) => {
 		const shipSize = ship.size;
 		const shipContainerEl = document.createElement('div');
+		shipContainerEl.id = `${ i }`;
 		shipContainerEl.classList.add('drag_drop_ship_container');
 		for (let i = 0; i < shipSize; i++) {
 			const shipEl = document.createElement('div');
 			shipEl.classList.add('ship', 'drag_drop_ship');
 			shipContainerEl.append(shipEl);
 		}
-
 		shipContainerEl.addEventListener('mousedown', e => {
+			const { battleField, fieldCoords } = getFieldCoords();
+			const { bfStartX, bfStartY, bfEndX, bfEndY } = battleField;
 			const clickPlaceX = e.clientX;
 			const clickPlaceY = e.clientY;
 			const shipCoords = shipContainerEl.getBoundingClientRect();
@@ -676,13 +679,68 @@ const renderShipsToDragDrop = () => {
 				const currentCursorPlaceY = e.pageY;
 				const diffX = currentCursorPlaceX - startX - shiftX;
 				const diffY = currentCursorPlaceY - startY - shiftY;
-				shipContainerEl.style.transform = `translate(${ diffX }px, ${ diffY }px`;
+				shipContainerEl.style.transform = `translate(${ diffX }px, ${ diffY }px)`;
 			}
 
+			const rotateShip = () => shipContainerEl.classList.toggle('rotate')
 			window.addEventListener('mousemove', moveShip);
+			window.addEventListener('wheel', rotateShip);
 			const cancelEventListeners = e => {
 				window.removeEventListener('mousemove', moveShip);
 				window.removeEventListener('mouseup', cancelEventListeners);
+				window.removeEventListener('wheel', rotateShip);
+				const shipCoords = shipContainerEl.getBoundingClientRect();
+				const shipContainerElWidth = shipContainerEl.offsetWidth;
+				const shipContainerElHeight = shipContainerEl.offsetHeight;
+				const startAbscissa = shipCoords.x;
+				const startOrdinate = shipCoords.y;
+				const endAbscissa = startAbscissa + shipContainerElWidth;
+				const endOrdinate = startOrdinate + shipContainerElHeight;
+
+				const isInBattleField = (bfStartX < startAbscissa && bfEndX > endAbscissa) && (bfStartY < startOrdinate && bfEndY > endOrdinate);
+				// console.group();
+				// console.log('bfStartX', bfStartX)
+				// console.log('startAbscissa', startAbscissa)
+				// console.log('bfEndX', bfEndX)
+				// console.log('endAbscissa', endAbscissa)
+				// console.log('bfStartY', bfStartY)
+				// console.log('startOrdinate', startOrdinate)
+				// console.log('bfEndY', bfEndY)
+				// console.log('endOrdinate', endOrdinate)
+				// console.log('bfStartX < startAbscissa', bfStartX < startAbscissa)
+				// console.log('bfEndX > endAbscissa', bfEndX > endAbscissa)
+				// console.log('bfStartY < startOrdinate', bfStartY < startOrdinate)
+				// console.log('bfEndY > endOrdinate', bfEndY > endOrdinate)
+				// console.groupEnd();
+				if (isInBattleField) {
+					const shipEls = [ ...shipContainerEl.querySelectorAll('.drag_drop_ship') ];
+					const shipSize = shipEls.length;
+					const hits = [];
+					let count = 0;
+					shipEls.forEach(shipEl => {
+						const shipElCoords = shipEl.getBoundingClientRect();
+						const shipElStartX = shipElCoords.x;
+						const shipElStartY = shipElCoords.y;
+						for (let fieldId in fieldCoords) {
+							const { fieldStartX, fieldStartY, fieldEndX, fieldEndY } = fieldCoords[fieldId];
+							const isShipBetweenX = shipElStartX > fieldStartX && shipElStartX < fieldEndX;
+							const isShipBetweenY = shipElStartY > fieldStartY && shipElStartY < fieldEndY;
+							const isShipInField = isShipBetweenX && isShipBetweenY;
+							if (isShipInField) {
+								hits.push(fieldId);
+								count++;
+							}
+						}
+					});
+					if (count === shipSize) {
+						window.shipsOnBattleField[shipContainerEl.id] = hits;
+					}
+				}
+				else {
+					shipContainerEl.style.transform = 'translate(0px, 0px)';
+					const shipCoords = window.shipsOnBattleField[shipContainerEl.id];
+					if (shipCoords) delete window.shipsOnBattleField[shipContainerEl.id];
+				}
 			}
 			window.addEventListener('mouseup', cancelEventListeners);
 		});
@@ -690,6 +748,37 @@ const renderShipsToDragDrop = () => {
 		dragDropContainerEl.append(shipContainerEl);
 	});
 	mainContainerEl.append(dragDropContainerEl);
+}
+
+const getFieldCoords = () => {
+	const battleFieldEl = mainContainerEl.querySelector('.battle_field');
+	const fieldEls = [ ...battleFieldEl.querySelectorAll('.field') ];
+	const fieldElsLength = fieldEls.length;
+	const fieldCoords = {};
+	let bfStartX = null;
+	let bfStartY = null;
+	let bfEndX = null;
+	let bfEndY = null;
+	fieldEls.forEach((fieldEl, i) => {
+		const fieldId = fieldEl.fieldId;
+		const fieldElCoords = fieldEl.getBoundingClientRect();
+		const fieldElWidth = fieldEl.offsetWidth;
+		const fieldElHeight = fieldEl.offsetHeight;
+		const fieldStartX = fieldElCoords.x;
+		const fieldStartY = fieldElCoords.y;
+		const fieldEndX = fieldStartX + fieldElWidth;
+		const fieldEndY = fieldStartY + fieldElHeight;
+		if (i === 0) {
+			bfStartX = fieldStartX;
+			bfStartY = fieldStartY;
+		}
+		if (i === fieldElsLength - 1) {
+			bfEndX = fieldEndX;
+			bfEndY = fieldEndY;
+		}
+		fieldCoords[fieldId] = { fieldStartX, fieldStartY, fieldEndX, fieldEndY };
+	});
+	return { battleField: { bfStartX, bfStartY, bfEndX, bfEndY }, fieldCoords };
 }
 
 const setGameMode = isWithBot => {
