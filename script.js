@@ -651,11 +651,17 @@ const renderShipsToDragDrop = () => {
 	window.startPointAbscissa = [];
 	window.startPointOrdinate = [];
 	window.shipsOnBattleField = {};
+	const shipPartWidth = 50;
+	const marginBetween = 30;
+	let currentOffset = 0;
 	player.ships.forEach((ship, i) => {
 		const shipSize = ship.size;
 		const shipContainerEl = document.createElement('div');
 		shipContainerEl.id = `${ i }`;
 		shipContainerEl.classList.add('drag_drop_ship_container');
+		shipContainerEl.style.left = `${ currentOffset }px`;
+		shipContainerEl.individualOffset = currentOffset;
+		currentOffset += shipPartWidth * shipSize + marginBetween;
 		for (let i = 0; i < shipSize; i++) {
 			const shipEl = document.createElement('div');
 			shipEl.classList.add('ship', 'drag_drop_ship');
@@ -682,7 +688,7 @@ const renderShipsToDragDrop = () => {
 				shipContainerEl.style.transform = `translate(${ diffX }px, ${ diffY }px)`;
 			}
 
-			const rotateShip = () => shipContainerEl.classList.toggle('rotate')
+			const rotateShip = () => shipContainerEl.classList.toggle('rotate');
 			window.addEventListener('mousemove', moveShip);
 			window.addEventListener('wheel', rotateShip);
 			const cancelEventListeners = e => {
@@ -711,6 +717,7 @@ const renderShipsToDragDrop = () => {
 				// console.log('bfEndX > endAbscissa', bfEndX > endAbscissa)
 				// console.log('bfStartY < startOrdinate', bfStartY < startOrdinate)
 				// console.log('bfEndY > endOrdinate', bfEndY > endOrdinate)
+				// console.log('fieldCoords', fieldCoords)
 				// console.groupEnd();
 				if (isInBattleField) {
 					const shipEls = [ ...shipContainerEl.querySelectorAll('.drag_drop_ship') ];
@@ -734,6 +741,33 @@ const renderShipsToDragDrop = () => {
 					});
 					if (count === shipSize) {
 						window.shipsOnBattleField[shipContainerEl.id] = hits;
+						const firstHitId = hits[0];
+						const coordsFirstHit = fieldCoords[firstHitId];
+						const { fieldStartX, fieldStartY, fieldEndX, fieldEndY } = coordsFirstHit;
+						const currentTranslate = shipContainerEl.style.transform;
+						// const regExp = new RegExp(/-?(\d+)\./, 'g');
+						const regExp = new RegExp(/-?\d+\.?/, 'g');
+						const currentTranslateValues = currentTranslate.match(regExp);
+						let firstMatch = currentTranslateValues[0];
+						const isFirstMatchFloat = firstMatch[firstMatch.length - 1] === '.';
+						let secondMatch = isFirstMatchFloat ? currentTranslateValues[2] : currentTranslateValues[1];
+						const isSecondMatchFloat = secondMatch[secondMatch.length - 1] === '.';
+						firstMatch = isFirstMatchFloat ? currentTranslateValues[0] + currentTranslateValues[1] : currentTranslateValues[0];
+						secondMatch = isSecondMatchFloat ?
+							(isFirstMatchFloat ? currentTranslateValues[2] + currentTranslateValues[3] : currentTranslateValues[1] + currentTranslateValues[2])
+							:
+							(isFirstMatchFloat ? currentTranslateValues[2] : currentTranslateValues[1]);
+						const diffX = startAbscissa - fieldStartX;
+						const diffY = startOrdinate - fieldStartY;
+						const correctTranslateX = firstMatch - diffX;
+						const correctTranslateY = secondMatch - diffY;
+						shipContainerEl.style.transform = `translate(${ correctTranslateX }px, ${ correctTranslateY }px)`;
+						console.log('currentTranslate', currentTranslate)
+						console.log('currentTranslateValues', currentTranslateValues)
+						console.log('correctTranslateX', correctTranslateX)
+						console.log('correctTranslateY', correctTranslateY)
+						console.log('diffX', diffX)
+						console.log('diffY', diffY)
 					}
 				}
 				else {
@@ -746,6 +780,7 @@ const renderShipsToDragDrop = () => {
 		});
 
 		dragDropContainerEl.append(shipContainerEl);
+
 	});
 	mainContainerEl.append(dragDropContainerEl);
 }
