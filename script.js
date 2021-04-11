@@ -686,6 +686,51 @@ const renderShipsToDragDrop = () => {
 				const diffX = currentCursorPlaceX - startX - shiftX;
 				const diffY = currentCursorPlaceY - startY - shiftY;
 				shipContainerEl.style.transform = `translate(${ diffX }px, ${ diffY }px)`;
+				const { startAbscissa, startOrdinate, endAbscissa, endOrdinate } = getShipContainerElCoords(shipContainerEl);
+				const isInBattleField = (bfStartX <= startAbscissa && bfEndX >= endAbscissa) && (bfStartY <= startOrdinate && bfEndY >= endOrdinate);
+				if (isInBattleField) {
+					const shipEls = [ ...shipContainerEl.querySelectorAll('.drag_drop_ship') ];
+					const hits = [];
+					shipEls.forEach(shipEl => {
+						const shipElCoords = shipEl.getBoundingClientRect();
+						const shipElStartX = shipElCoords.x;
+						const shipElStartY = shipElCoords.y;
+						for (let fieldId in fieldCoords) {
+							const { fieldStartX, fieldStartY, fieldEndX, fieldEndY } = fieldCoords[fieldId];
+							const isShipBetweenX = shipElStartX > fieldStartX && shipElStartX < fieldEndX;
+							const isShipBetweenY = shipElStartY > fieldStartY && shipElStartY < fieldEndY;
+							const isShipInField = isShipBetweenX && isShipBetweenY;
+							if (isShipInField) hits.push(fieldId);
+						}
+					});
+					const fieldEls = getFieldEls();
+					fieldEls.forEach(fieldEl => {
+						fieldEl.classList.remove('hit');
+						fieldEl.classList.remove('occupied');
+					});
+					const shipsOnBattleField = window.shipsOnBattleField;
+					const occupiedFields = [];
+					for (let ship in shipsOnBattleField) {
+						if (shipsOnBattleField.hasOwnProperty(ship)) occupiedFields.push(...shipsOnBattleField[ship]);
+					}
+					const reservedFields = getReservedCoords(hits, shipContainerEl);
+					reservedFields.forEach(reservedField => {
+						const fieldEl = fieldEls.find(fieldEl => +fieldEl.fieldId === reservedField);
+						if (fieldEl) fieldEl.classList.add('hit');
+						const occupiedField = occupiedFields.find(field => +field === reservedField);
+						if (occupiedField) {
+							const occupiedFieldEl = fieldEls.find(fieldEl => fieldEl.fieldId === occupiedField);
+							if (occupiedFieldEl) occupiedFieldEl.classList.add('occupied');
+						}
+					});
+					hits.forEach(hit => {
+						const occupiedField = occupiedFields.find(field => field === hit);
+						if (occupiedField) {
+							const occupiedFieldEl = fieldEls.find(fieldEl => fieldEl.fieldId === occupiedField);
+							if (occupiedFieldEl) occupiedFieldEl.classList.add('occupied');
+						}
+					});
+				}
 			}
 
 			const rotateShip = () => shipContainerEl.classList.toggle('rotate');
@@ -695,30 +740,14 @@ const renderShipsToDragDrop = () => {
 				window.removeEventListener('mousemove', moveShip);
 				window.removeEventListener('mouseup', cancelEventListeners);
 				window.removeEventListener('wheel', rotateShip);
-				const shipCoords = shipContainerEl.getBoundingClientRect();
-				const shipContainerElWidth = shipContainerEl.offsetWidth;
-				const shipContainerElHeight = shipContainerEl.offsetHeight;
-				const startAbscissa = shipCoords.x;
-				const startOrdinate = shipCoords.y;
-				const endAbscissa = startAbscissa + shipContainerElWidth;
-				const endOrdinate = startOrdinate + shipContainerElHeight;
-
-				const isInBattleField = (bfStartX < startAbscissa && bfEndX > endAbscissa) && (bfStartY < startOrdinate && bfEndY > endOrdinate);
-				// console.group();
-				// console.log('bfStartX', bfStartX)
-				// console.log('startAbscissa', startAbscissa)
-				// console.log('bfEndX', bfEndX)
-				// console.log('endAbscissa', endAbscissa)
-				// console.log('bfStartY', bfStartY)
-				// console.log('startOrdinate', startOrdinate)
-				// console.log('bfEndY', bfEndY)
-				// console.log('endOrdinate', endOrdinate)
-				// console.log('bfStartX < startAbscissa', bfStartX < startAbscissa)
-				// console.log('bfEndX > endAbscissa', bfEndX > endAbscissa)
-				// console.log('bfStartY < startOrdinate', bfStartY < startOrdinate)
-				// console.log('bfEndY > endOrdinate', bfEndY > endOrdinate)
-				// console.log('fieldCoords', fieldCoords)
-				// console.groupEnd();
+				const { startAbscissa, startOrdinate, endAbscissa, endOrdinate } = getShipContainerElCoords(shipContainerEl);
+				// const isInBattleField = (bfStartX <= startAbscissa && bfEndX >= endAbscissa) && (bfStartY <= startOrdinate && bfEndY >= endOrdinate);
+				const isInBattleField = bfStartX <= startAbscissa;
+				const fieldEls = getFieldEls();
+				fieldEls.forEach(fieldEl => {
+					fieldEl.classList.remove('hit');
+					fieldEl.classList.remove('occupied');
+				});
 				if (isInBattleField) {
 					const shipEls = [ ...shipContainerEl.querySelectorAll('.drag_drop_ship') ];
 					const shipSize = shipEls.length;
@@ -745,7 +774,6 @@ const renderShipsToDragDrop = () => {
 						const coordsFirstHit = fieldCoords[firstHitId];
 						const { fieldStartX, fieldStartY, fieldEndX, fieldEndY } = coordsFirstHit;
 						const currentTranslate = shipContainerEl.style.transform;
-						// const regExp = new RegExp(/-?(\d+)\./, 'g');
 						const regExp = new RegExp(/-?\d+\.?/, 'g');
 						const currentTranslateValues = currentTranslate.match(regExp);
 						let firstMatch = currentTranslateValues[0];
@@ -762,12 +790,6 @@ const renderShipsToDragDrop = () => {
 						const correctTranslateX = firstMatch - diffX;
 						const correctTranslateY = secondMatch - diffY;
 						shipContainerEl.style.transform = `translate(${ correctTranslateX }px, ${ correctTranslateY }px)`;
-						console.log('currentTranslate', currentTranslate)
-						console.log('currentTranslateValues', currentTranslateValues)
-						console.log('correctTranslateX', correctTranslateX)
-						console.log('correctTranslateY', correctTranslateY)
-						console.log('diffX', diffX)
-						console.log('diffY', diffY)
 					}
 				}
 				else {
@@ -786,8 +808,7 @@ const renderShipsToDragDrop = () => {
 }
 
 const getFieldCoords = () => {
-	const battleFieldEl = mainContainerEl.querySelector('.battle_field');
-	const fieldEls = [ ...battleFieldEl.querySelectorAll('.field') ];
+	const fieldEls = getFieldEls();
 	const fieldElsLength = fieldEls.length;
 	const fieldCoords = {};
 	let bfStartX = null;
@@ -814,6 +835,60 @@ const getFieldCoords = () => {
 		fieldCoords[fieldId] = { fieldStartX, fieldStartY, fieldEndX, fieldEndY };
 	});
 	return { battleField: { bfStartX, bfStartY, bfEndX, bfEndY }, fieldCoords };
+}
+
+const getReservedCoords = (hits, shipContainerEl) => {
+	const isUpShip = shipContainerEl.classList.contains('rotate');
+	const firstHit = hits[0];
+	const lastHit = hits[hits.length - 1];
+	const reservedFields = [];
+	if (isUpShip) {
+		const upperCoord = firstHit - 10;
+		const upperLeftCoord = firstHit - 11;
+		const upperRightCoord = firstHit - 9;
+		const bottomCoord = +lastHit + 10;
+		const bottomLeftCoord = +lastHit + 9;
+		const bottomRightCoord = +lastHit + 11;
+		reservedFields.push(upperCoord, upperLeftCoord, upperRightCoord, bottomCoord, bottomLeftCoord, bottomRightCoord);
+		for (let i = 0; i < hits.length; i++) {
+			const hit = hits[i];
+			const leftCoord = hit - 1;
+			const rightCoord = +hit + 1;
+			reservedFields.push(leftCoord, rightCoord);
+		}
+	}
+	else {
+		const leftCoord = firstHit - 1;
+		const leftUpCoord = firstHit - 1 - 10;
+		const leftDownCoord = firstHit - 1 + 10;
+
+		const rightCoord = +lastHit + 1;
+		const rightUpCoord = +lastHit + 1 - 10;
+		const rightDownCoord = +lastHit + 1 + 10;
+		reservedFields.push(leftCoord, leftUpCoord, leftDownCoord, rightCoord, rightUpCoord, rightDownCoord);
+		for (let i = 0; i < hits.length; i++) {
+			const hit = hits[i];
+			const upCoord = hit - 10;
+			const bottomCoord = +hit + 10;
+			reservedFields.push(upCoord, bottomCoord);
+		}
+	}
+	return reservedFields;
+}
+
+const getFieldEls = () => {
+	return [ ...mainContainerEl.querySelectorAll('.field') ];
+}
+
+const getShipContainerElCoords = shipContainerEl => {
+	const shipCoords = shipContainerEl.getBoundingClientRect();
+	const shipContainerElWidth = shipContainerEl.offsetWidth;
+	const shipContainerElHeight = shipContainerEl.offsetHeight;
+	const startAbscissa = shipCoords.x;
+	const startOrdinate = shipCoords.y;
+	const endAbscissa = startAbscissa + shipContainerElWidth;
+	const endOrdinate = startOrdinate + shipContainerElHeight;
+	return { startAbscissa, startOrdinate, endAbscissa, endOrdinate };
 }
 
 const setGameMode = isWithBot => {
