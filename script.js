@@ -657,7 +657,7 @@ const renderShipsToDragDrop = () => {
 	player.ships.forEach((ship, i) => {
 		const shipSize = ship.size;
 		const shipContainerEl = document.createElement('div');
-		shipContainerEl.id = `${ i }`;
+		shipContainerEl.id = i;
 		shipContainerEl.classList.add('drag_drop_ship_container');
 		shipContainerEl.style.left = `${ currentOffset }px`;
 		shipContainerEl.individualOffset = currentOffset;
@@ -668,6 +668,8 @@ const renderShipsToDragDrop = () => {
 			shipContainerEl.append(shipEl);
 		}
 		shipContainerEl.addEventListener('mousedown', e => {
+			const isShipPlaced = window.shipsOnBattleField[shipContainerEl.id];
+			if (isShipPlaced) delete window.shipsOnBattleField[shipContainerEl.id];
 			const { battleField, fieldCoords } = getFieldCoords();
 			const { bfStartX, bfStartY, bfEndX, bfEndY } = battleField;
 			const clickPlaceX = e.clientX;
@@ -704,15 +706,8 @@ const renderShipsToDragDrop = () => {
 						}
 					});
 					const fieldEls = getFieldEls();
-					fieldEls.forEach(fieldEl => {
-						fieldEl.classList.remove('hit');
-						fieldEl.classList.remove('occupied');
-					});
-					const shipsOnBattleField = window.shipsOnBattleField;
-					const occupiedFields = [];
-					for (let ship in shipsOnBattleField) {
-						if (shipsOnBattleField.hasOwnProperty(ship)) occupiedFields.push(...shipsOnBattleField[ship]);
-					}
+					removeHitAndOccupiedStyles(fieldEls);
+					const occupiedFields = getOccupiedFields();
 					const reservedFields = getReservedCoords(hits, shipContainerEl);
 					reservedFields.forEach(reservedField => {
 						const fieldEl = fieldEls.find(fieldEl => +fieldEl.fieldId === reservedField);
@@ -742,12 +737,9 @@ const renderShipsToDragDrop = () => {
 				window.removeEventListener('wheel', rotateShip);
 				const { startAbscissa, startOrdinate, endAbscissa, endOrdinate } = getShipContainerElCoords(shipContainerEl);
 				// const isInBattleField = (bfStartX <= startAbscissa && bfEndX >= endAbscissa) && (bfStartY <= startOrdinate && bfEndY >= endOrdinate);
-				const isInBattleField = bfStartX <= startAbscissa;
+				const isInBattleField = (bfStartX <= startAbscissa && bfEndX >= endAbscissa) && (bfStartY <= startOrdinate && bfEndY >= endOrdinate);
 				const fieldEls = getFieldEls();
-				fieldEls.forEach(fieldEl => {
-					fieldEl.classList.remove('hit');
-					fieldEl.classList.remove('occupied');
-				});
+				removeHitAndOccupiedStyles(fieldEls);
 				if (isInBattleField) {
 					const shipEls = [ ...shipContainerEl.querySelectorAll('.drag_drop_ship') ];
 					const shipSize = shipEls.length;
@@ -769,6 +761,14 @@ const renderShipsToDragDrop = () => {
 						}
 					});
 					if (count === shipSize) {
+						const occupiedFields = getOccupiedFields();
+						const reservedFields = getReservedCoords(hits, shipContainerEl);
+						let isPlaceNotEmpty = false;
+
+						reservedFields.forEach(reservedField => isFieldOccupied(reservedField, occupiedFields) ? isPlaceNotEmpty = true : false);
+						hits.forEach(hit => isFieldOccupied(hit, occupiedFields) ? isPlaceNotEmpty = true : false);
+
+						if (isPlaceNotEmpty) return returnShipToStartPlace(shipContainerEl);
 						window.shipsOnBattleField[shipContainerEl.id] = hits;
 						const firstHitId = hits[0];
 						const coordsFirstHit = fieldCoords[firstHitId];
@@ -793,9 +793,7 @@ const renderShipsToDragDrop = () => {
 					}
 				}
 				else {
-					shipContainerEl.style.transform = 'translate(0px, 0px)';
-					const shipCoords = window.shipsOnBattleField[shipContainerEl.id];
-					if (shipCoords) delete window.shipsOnBattleField[shipContainerEl.id];
+					return returnShipToStartPlace(shipContainerEl);
 				}
 			}
 			window.addEventListener('mouseup', cancelEventListeners);
@@ -878,6 +876,34 @@ const getReservedCoords = (hits, shipContainerEl) => {
 
 const getFieldEls = () => {
 	return [ ...mainContainerEl.querySelectorAll('.field') ];
+}
+
+const removeHitAndOccupiedStyles = fieldEls => {
+	if (!fieldEls || !fieldEls.length) return;
+	fieldEls.forEach(fieldEl => {
+		fieldEl.classList.remove('hit');
+		fieldEl.classList.remove('occupied');
+	});
+}
+
+const getOccupiedFields = () => {
+	const shipsOnBattleField = window.shipsOnBattleField;
+	const occupiedFields = [];
+	for (let ship in shipsOnBattleField) {
+		if (shipsOnBattleField.hasOwnProperty(ship)) occupiedFields.push(...shipsOnBattleField[ship]);
+	}
+	return occupiedFields;
+}
+
+const returnShipToStartPlace = shipContainerEl => {
+	shipContainerEl.style.transform = 'translate(0px, 0px)';
+	const shipCoords = window.shipsOnBattleField[shipContainerEl.id];
+	if (shipCoords) delete window.shipsOnBattleField[shipContainerEl.id];
+}
+
+const isFieldOccupied = (hit, occupiedFields) => {
+	const occupiedField = occupiedFields.find(field => +field === hit);
+	return !!occupiedField;
 }
 
 const getShipContainerElCoords = shipContainerEl => {
