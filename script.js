@@ -26,7 +26,7 @@ const control = {
 
 		if (character.failCounter === 10) {
 			character.failCounter = 0;
-			deleteShipStyles();
+			returnOnPlaceAllShips();
 			delete character.borders;
 			character.ships.forEach(ship => ship.location = []);
 			character.ships.forEach(ship => delete ship.reservedCoords);
@@ -81,7 +81,7 @@ const control = {
 					leftBorder = (row - i).toString() + (col - 1).toString();
 					rightBorder = (row - i).toString() + (col + 1).toString();
 					borders.push(leftBorder, rightBorder, coordination);
-					ship.location.push(coordination);
+					ship.location.unshift(coordination);
 					ship.reservedCoords.push(leftBorder, rightBorder);
 				}
 
@@ -165,7 +165,7 @@ const control = {
 					upBorder = (row + 1).toString() + (col - i).toString();
 					downBorder = (row - 1).toString() + (col - i).toString();
 					borders.push(upBorder, downBorder, coordination);
-					ship.location.push(coordination);
+					ship.location.unshift(coordination);
 					ship.reservedCoords.push(upBorder, downBorder);
 				}
 
@@ -300,6 +300,7 @@ const fireBot = () => {
 		return setTimeout(fireBotSecondShoot, 500, targetField.fieldId, targetShip);
 	}
 }
+
 
 const fireBotSecondShoot = (oldShootCoord, ship) => {
 	const playerBattleField = mainContainerEl.querySelector('.player');
@@ -456,30 +457,35 @@ const repeatedShoot = (ship, targetField, playerField, coordToShoot) => {
 
 
 const setShipStyles = forWhat => {
+	const shipContainerEls = getShipContainerEls();
+	const { fieldCoords } = getFieldCoords();
+
 	const character = model[forWhat];
 	const charactersShips = character.ships;
-	const coordsForStyles = [];
-	charactersShips.forEach(ship => coordsForStyles.push(...ship.location));
-	const playerField = mainContainerEl.querySelector('.player');
-	let fields;
-	if (playerField) fields = [ ...playerField.querySelectorAll('.field') ];
-	else fields = [ ...mainContainerEl.querySelectorAll('.field') ];
-	if (!fields) return;
-	coordsForStyles.forEach(coord => {
-		fields.forEach(field => {
-			if (field.fieldId === coord) {
-				field.classList.add('ship');
-			}
-		})
+	window.shipsStartPoints = {};
+	charactersShips.forEach(charactersShip => {
+		const { shipId, location } = charactersShip;
+		const shipContainerEl = shipContainerEls.find(shipContainerEl => +shipContainerEl.id === shipId);
+		let isUpGenerate = false;
+		if (location.length > 1) {
+			const firstCoord = location[0];
+			const secondCoord = location[1];
+			const diff = Math.abs(firstCoord - secondCoord);
+			if (diff === 10) isUpGenerate = true;
+		}
+		if (shipContainerEl) {
+			if (isUpGenerate) shipContainerEl.classList.add('rotate');
+			else shipContainerEl.classList.remove('rotate');
+			const { startAbscissa, startOrdinate } = getShipContainerElCoords(shipContainerEl);
+			window.shipsStartPoints[shipContainerEl.id] = { startX: startAbscissa, startY: startOrdinate };
+			const firstLocation = location[0];
+			const { fieldStartX, fieldStartY } = fieldCoords[firstLocation];
+			const diffStartX = fieldStartX - startAbscissa;
+			const diffStartY = fieldStartY - startOrdinate;
+			shipContainerEl.style.transform = `translate(${ diffStartX }px, ${ diffStartY }px)`;
+		}
 	})
 }
-
-
-const deleteShipStyles = () => {
-	const fields = [ ...mainContainerEl.querySelectorAll('.field') ];
-	fields.forEach(field => field.classList.remove('ship'));
-}
-
 
 const renderGameModeButtons = () => {
 	const gameModeEl = document.createElement('div');
@@ -599,13 +605,14 @@ const renderOptionButtons = () => {
 	randomGenerateShipsButton.classList.add('random_generate_button', 'button');
 	randomGenerateShipsButton.innerText = 'Сгенерировать случайно';
 	randomGenerateShipsButton.addEventListener('click', e => {
-		deleteShipStyles();
+		returnOnPlaceAllShips();
 		model.player.failCounter = 0;
 		model.player.ships.forEach(ship => ship.location = []);
 		model.player.ships.forEach(ship => ship.reservedCoords && delete ship.reservedCoords);
 		model.player.ships.forEach(ship => control.randomGenerateShip("player", ship));
 		delete model.player.failCounter;
 		delete model.player.borders;
+		setOccupiedField();
 		setShipStyles('player');
 		startGameButton.classList.remove('disabled');
 	});
@@ -658,13 +665,14 @@ const renderShipsToDragDrop = () => {
 		const shipSize = ship.size;
 		const shipContainerEl = document.createElement('div');
 		shipContainerEl.id = i;
+		ship.shipId = i;
 		shipContainerEl.classList.add('drag_drop_ship_container');
 		shipContainerEl.style.left = `${ currentOffset }px`;
 		shipContainerEl.individualOffset = currentOffset;
 		currentOffset += shipPartWidth * shipSize + marginBetween;
 		for (let i = 0; i < shipSize; i++) {
 			const shipEl = document.createElement('div');
-			shipEl.classList.add('ship', 'drag_drop_ship');
+			shipEl.classList.add('drag_drop_ship');
 			shipContainerEl.append(shipEl);
 		}
 		shipContainerEl.addEventListener('mousedown', e => {
@@ -790,6 +798,10 @@ const renderShipsToDragDrop = () => {
 						const correctTranslateX = firstMatch - diffX;
 						const correctTranslateY = secondMatch - diffY;
 						shipContainerEl.style.transform = `translate(${ correctTranslateX }px, ${ correctTranslateY }px)`;
+						const playerShips = model.player.ships;
+						const playerShip = playerShips.find(playerShip => playerShip.shipId === +shipContainerEl.id);
+						playerShip.location = hits;
+						isDisableStartGameButton();
 					}
 				}
 				else {
@@ -895,10 +907,34 @@ const getOccupiedFields = () => {
 	return occupiedFields;
 }
 
+const setOccupiedField = () => {
+	const playerShips = model.player.ships;
+	playerShips.forEach(playerShip => {
+		const { shipId, location } = playerShip;
+		window.shipsOnBattleField[shipId] = location;
+	})
+}
+
 const returnShipToStartPlace = shipContainerEl => {
 	shipContainerEl.style.transform = 'translate(0px, 0px)';
+	shipContainerEl.classList.remove('rotate');
 	const shipCoords = window.shipsOnBattleField[shipContainerEl.id];
+	const ship = model.player.ships.find(ship => ship.shipId === +shipContainerEl.id);
+	if (ship) ship.location = [];
 	if (shipCoords) delete window.shipsOnBattleField[shipContainerEl.id];
+	isDisableStartGameButton();
+}
+
+const isDisableStartGameButton = () => {
+	const startGameButton = mainContainerEl.querySelector('.start_game_button');
+	const playerShips = model.player.ships;
+	let isDisable = false;
+	playerShips.forEach(playerShip => {
+		const { location } = playerShip;
+		if (!location.length) isDisable = true;
+	});
+	if (isDisable) startGameButton.classList.add('disabled');
+	else startGameButton.classList.remove('disabled');
 }
 
 const isFieldOccupied = (hit, occupiedFields) => {
@@ -916,6 +952,16 @@ const getShipContainerElCoords = shipContainerEl => {
 	const endOrdinate = startOrdinate + shipContainerElHeight;
 	return { startAbscissa, startOrdinate, endAbscissa, endOrdinate };
 }
+
+const getShipContainerEls = () => {
+	return [ ...mainContainerEl.querySelectorAll('.drag_drop_ship_container') ];
+}
+
+const returnOnPlaceAllShips = () => {
+	const shipContainerEls = getShipContainerEls();
+	shipContainerEls.forEach(shipContainerEl => returnShipToStartPlace(shipContainerEl));
+}
+
 
 const setGameMode = isWithBot => {
 	control.isWithBot = isWithBot;
@@ -974,7 +1020,15 @@ const startGame = () => {
 		delete bot.borders;
 		delete bot.failCounter;
 	}
-	setShipStyles('player');
+	const fieldEls = [ ...playerBattleFieldEl.querySelectorAll('.field') ];
+	const playerShips = model.player.ships;
+	playerShips.forEach(playerShip => {
+		const { location } = playerShip;
+		location.forEach(shipLocation => {
+			const fieldEl = fieldEls.find(fieldEl => fieldEl.fieldId === shipLocation);
+			if (fieldEl) fieldEl.classList.add('ship');
+		})
+	});
 }
 
 const returnToPrevStage = stage => {
@@ -1001,8 +1055,10 @@ const returnToPrevStage = stage => {
 			const battleFieldEl = createBattleField(size);
 			mainContainerEl.append(battleFieldEl);
 			mainContainerEl.classList.remove('pve_battle');
+			renderShipsToDragDrop();
 			renderOptionButtons();
 			setShipStyles('player');
+			isDisableStartGameButton();
 			if (isWithBot) {
 				model.bot.ships.forEach(ship => {
 					ship.location = [];

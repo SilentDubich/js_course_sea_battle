@@ -152,7 +152,7 @@ table {
 	width: 50px;
 	outline: 1px solid #000;
 	cursor: pointer;
-	background: azure;
+	background: #f0ffff;
 }
 
 .random_generate_button {
@@ -182,6 +182,7 @@ table {
 	background: url("imgs/ship.png") no-repeat center;
 	background-size: contain;
 	transition: .5s;
+	background-color: #f0ffff;
 }
 
 .hit {
@@ -216,7 +217,7 @@ table {
 }
 
 .player .row {
-	width: 50%;
+	width: 80%;
 }
 
 .player .letter, .player .numbers {
@@ -246,6 +247,9 @@ table {
 .drag_drop_ship {
 	width: 50px;
 	height: 50px;
+	background: url("imgs/ship.png") no-repeat center;
+	background-size: contain;
+	transition: .5s;
 }
 
 .occupied {
